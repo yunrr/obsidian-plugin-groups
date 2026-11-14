@@ -58,22 +58,18 @@ export class PluginGroup implements PluginGroupData {
 		this.plugins = plugins ?? [];
 	}
 
-	startup() {
-		if (!this.loadAtStartup) {
-			return;
-		}
-
+	/**
+	 * Applies what this group is configured to do after Obsidian's startup.
+	 * Waiting for the configured delay is the caller's job, so the scheduled
+	 * work can be tracked and cancelled (see StartupScheduler).
+	 */
+	async applyStartupBehaviour() {
 		if (this.disableOnStartup) {
-			setTimeout(async () => {
-				await this.disable();
-			}, this.delay * 1000);
+			await this.disable();
 			return;
 		}
 
-		setTimeout(async () => {
-			await this.enable();
-		}, this.delay * 1000);
-		return;
+		await this.enable();
 	}
 
 	async enable() {

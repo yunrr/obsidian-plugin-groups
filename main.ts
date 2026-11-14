@@ -1,9 +1,9 @@
 import { Notice, Plugin } from 'obsidian';
 import PluginGroupSettings from './src/PluginGroupSettings';
-import { disableStartupTimeout } from './src/Utils/Constants';
 import Manager from './src/Managers/Manager';
 import CommandManager from './src/Managers/CommandManager';
 import PluginManager from './src/Managers/PluginManager';
+import StartupScheduler from './src/Managers/StartupScheduler';
 
 interface PhaseTiming {
 	label: string;
@@ -15,6 +15,9 @@ export default class PgMain extends Plugin {
 		const manager = Manager.getInstance();
 		const onloadStartedAt = performance.now();
 		const timings: PhaseTiming[] = [];
+		// Distinguishes "loaded while Obsidian starts" from "user just enabled
+		// this plugin". Only the former should trigger delayed startup.
+		const loadedDuringStartup = !this.app.workspace.layoutReady;
 
 		let phaseStartedAt = performance.now();
 		await manager.init(this);
@@ -43,13 +46,15 @@ export default class PgMain extends Plugin {
 		// Anything that isn't a registration is deferred until the workspace is
 		// ready. This follows Obsidian's "Optimize plugin load time" guide.
 		this.app.workspace.onLayoutReady(() =>
-			this.registerGroupCommandsAndStartupGroups()
+			this.registerGroupCommandsAndStartupGroups(loadedDuringStartup)
 		);
 
 		this.displayTimeNotice(timings, performance.now() - onloadStartedAt);
 	}
 
-	private registerGroupCommandsAndStartupGroups() {
+	private registerGroupCommandsAndStartupGroups(
+		loadedDuringStartup: boolean
+	) {
 		const manager = Manager.getInstance();
 
 		let phaseStartedAt = performance.now();
@@ -60,17 +65,16 @@ export default class PgMain extends Plugin {
 		}
 		this.logDeferredTiming('Generated Commands for Groups', phaseStartedAt);
 
-		// TODO: Improve hacky solution if possible
-		if (window.performance.now() < disableStartupTimeout) {
-			phaseStartedAt = performance.now();
-			manager.groupsMap.forEach((group) => {
-				if (group.loadAtStartup) group.startup();
-			});
-			this.logDeferredTiming(
-				'Dispatching Groups for delayed start',
-				phaseStartedAt
-			);
+		if (!loadedDuringStartup) {
+			// Loading the plugin mid-session shouldn't start enabling groups
+			// behind the user's back.
+			this.logDeferredTiming('Skipped delayed startup', performance.now());
+			return;
 		}
+
+		phaseStartedAt = performance.now();
+		StartupScheduler.getInstance().schedule(manager.groupsMap.values());
+		this.logDeferredTiming('Scheduled delayed startup', phaseStartedAt);
 	}
 
 	private recordTiming(
@@ -114,7 +118,8 @@ export default class PgMain extends Plugin {
 	}
 
 	async onunload() {
-		// Never lose a scheduled settings write when the plugin unloads.
+		// Drop delays that haven't fired yet, then persist any pending change.
+		StartupScheduler.getInstance().cancel();
 		await Manager.getInstance().flushPendingSaveSettings();
 	}
 }
