@@ -104,14 +104,30 @@ export default class PluginSettings extends HtmlComponent<PluginSettingOptions> 
 	}
 
 	private getPluginsWithGroupsAsDescription(): ItemAndDescription<PgPlugin>[] {
-		return PluginManager.getAllAvailablePlugins().map((plugin) => {
-			const groups = Manager.getInstance().getGroupsOfPlugin(plugin.id);
-
-			return {
-				item: plugin,
-				description: groups.map((group) => group.name).join(', '),
-			};
+		// One pass over the groups instead of a full group scan per plugin.
+		const groupNamesByPluginId = new Map<string, string[]>();
+		Manager.getInstance().groupsMap.forEach((group) => {
+			for (const plugin of group.plugins) {
+				const groupNames = groupNamesByPluginId.get(plugin.id);
+				if (groupNames) {
+					groupNames.push(group.name);
+				} else {
+					groupNamesByPluginId.set(plugin.id, [group.name]);
+				}
+			}
 		});
+
+		const availablePlugins = PluginManager.getAllAvailablePlugins();
+		const pluginsWithGroups: ItemAndDescription<PgPlugin>[] = [];
+		for (const plugin of availablePlugins) {
+			pluginsWithGroups.push({
+				item: plugin,
+				description:
+					groupNamesByPluginId.get(plugin.id)?.join(', ') ?? '',
+			});
+		}
+
+		return pluginsWithGroups;
 	}
 
   // ------------------------------------------------------------------------

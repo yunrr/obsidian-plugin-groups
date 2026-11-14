@@ -10,6 +10,7 @@ export default class PluginManager {
 	private static enablePluginQueue: Set<string> = new Set<string>();
 	private static disablePluginQueue: Set<string> = new Set<string>();
 	private static pgEnabledPlugins: Set<string> = new Set<string>();
+	private static pendingLoadNewPlugins?: Promise<void>;
 
 	public static async queuePluginForEnable(
 		plugin: PgPlugin
@@ -47,35 +48,60 @@ export default class PluginManager {
 	}
 
 	public static async loadNewPlugins() {
-		if (PluginManager.getKnownPluginIds() === null) {
-			PluginManager.setKnownPluginIds(
-				PluginManager.getInstalledPluginIds()
-			);
-		} else {
+		// Startup and the settings tab may both ask for this while a run is
+		// still in flight; share one run instead of repeating the disk work.
+		if (PluginManager.pendingLoadNewPlugins) {
+			return PluginManager.pendingLoadNewPlugins;
+		}
+
+		PluginManager.pendingLoadNewPlugins = (async () => {
 			const knownPlugins = PluginManager.getKnownPluginIds();
 			const installedPlugins: Set<string> =
 				PluginManager.getInstalledPluginIds();
 
-			if (!installedPlugins) {
+			if (knownPlugins === null) {
+				PluginManager.setKnownPluginIds(installedPlugins);
 				return;
 			}
 
-			PluginManager.setKnownPluginIds(installedPlugins);
-
-			installedPlugins?.forEach((id) => {
-				if (!knownPlugins?.has(id)) {
-					Manager.getInstance().groupsMap.forEach((g) => {
-						if (g.autoAdd) {
-							const plugin =
-								PluginManager.getInstalledPluginFromId(id);
-							if (plugin) {
-								g.addPlugin(plugin);
-							}
-						}
-					});
+			const newPluginIds: string[] = [];
+			installedPlugins.forEach((id) => {
+				if (!knownPlugins.has(id)) {
+					newPluginIds.push(id);
 				}
 			});
-			return Manager.getInstance().saveSettings();
+
+			PluginManager.setKnownPluginIds(installedPlugins);
+
+			// Nothing new was installed: skip the settings write entirely.
+			// This used to rewrite data.json on every startup and on every
+			// settings tab open, even when no group changed.
+			if (newPluginIds.length === 0) {
+				return;
+			}
+
+			let changed = false;
+			newPluginIds.forEach((id) => {
+				const plugin = PluginManager.getInstalledPluginFromId(id);
+				if (!plugin) {
+					return;
+				}
+				Manager.getInstance().groupsMap.forEach((g) => {
+					if (g.autoAdd) {
+						changed = g.addPlugin(plugin) || changed;
+					}
+				});
+			});
+
+			if (changed) {
+				await Manager.getInstance().saveSettings();
+			}
+		})();
+
+		try {
+			await PluginManager.pendingLoadNewPlugins;
+		} finally {
+			PluginManager.pendingLoadNewPlugins = undefined;
 		}
 	}
 

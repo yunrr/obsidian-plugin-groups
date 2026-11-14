@@ -5,94 +5,116 @@ import Manager from './src/Managers/Manager';
 import CommandManager from './src/Managers/CommandManager';
 import PluginManager from './src/Managers/PluginManager';
 
+interface PhaseTiming {
+	label: string;
+	duration: number;
+}
+
 export default class PgMain extends Plugin {
 	async onload() {
-		const times: {
-			label: string;
-			time: number;
-		}[] = [];
+		const manager = Manager.getInstance();
+		const onloadStartedAt = performance.now();
+		const timings: PhaseTiming[] = [];
 
-		times.push({ label: 'Time on Load', time: this.getCurrentTime() });
+		let phaseStartedAt = performance.now();
+		await manager.init(this);
+		this.recordTiming(timings, 'Manager Setup', phaseStartedAt);
 
-		await Manager.getInstance().init(this);
-		this.logTime('Manager Setup', times);
+		// Scanning for new plugins touches local storage and may rewrite
+		// data.json. Obsidian loads every plugin before the user can interact
+		// with the app, so this is queued rather than awaited here.
+		phaseStartedAt = performance.now();
+		void PluginManager.loadNewPlugins().catch((error) =>
+			console.error(
+				'Plugin Groups: could not scan for newly installed plugins',
+				error
+			)
+		);
+		this.recordTiming(timings, 'Queueing new plugin scan', phaseStartedAt);
 
-		await PluginManager.loadNewPlugins();
-		this.logTime('Loading new plugins', times);
-
+		phaseStartedAt = performance.now();
 		this.addSettingTab(new PluginGroupSettings(this.app, this));
-		this.logTime('Creating the Settings Tab', times);
+		this.recordTiming(timings, 'Creating the Settings Tab', phaseStartedAt);
 
-		Manager.getInstance().updateStatusbarItem();
+		phaseStartedAt = performance.now();
+		manager.updateStatusbarItem();
+		this.recordTiming(timings, 'Creating the Statusbar item', phaseStartedAt);
 
-		if (!Manager.getInstance().groupsMap) {
-			this.displayTimeNotice(times);
+		// Anything that isn't a registration is deferred until the workspace is
+		// ready. This follows Obsidian's "Optimize plugin load time" guide.
+		this.app.workspace.onLayoutReady(() =>
+			this.registerGroupCommandsAndStartupGroups()
+		);
 
-			return; // Exit early if there are no groups yet, no need to load the rest.
-		}
+		this.displayTimeNotice(timings, performance.now() - onloadStartedAt);
+	}
 
-		if (Manager.getInstance().generateCommands) {
-			Manager.getInstance().groupsMap.forEach((group) =>
+	private registerGroupCommandsAndStartupGroups() {
+		const manager = Manager.getInstance();
+
+		let phaseStartedAt = performance.now();
+		if (manager.generateCommands) {
+			manager.groupsMap.forEach((group) =>
 				CommandManager.getInstance().AddGroupCommands(group.id)
 			);
-			if (Manager.getInstance().devLog) {
-				this.logTime('Generated Commands for Groups in', times);
-			}
 		}
+		this.logDeferredTiming('Generated Commands for Groups', phaseStartedAt);
 
 		// TODO: Improve hacky solution if possible
 		if (window.performance.now() < disableStartupTimeout) {
-			Manager.getInstance().groupsMap.forEach((group) => {
+			phaseStartedAt = performance.now();
+			manager.groupsMap.forEach((group) => {
 				if (group.loadAtStartup) group.startup();
 			});
-
-			if (Manager.getInstance().devLog) {
-				this.logTime('Dispatching Groups for delayed start in', times);
-			}
-		}
-
-		this.displayTimeNotice(times);
-	}
-
-	private logTime(label: string, times: { label: string; time: number }[]) {
-		if (Manager.getInstance().devLog) {
-			times.push({ label, time: this.elapsedTime(times) });
+			this.logDeferredTiming(
+				'Dispatching Groups for delayed start',
+				phaseStartedAt
+			);
 		}
 	}
 
-	private displayTimeNotice(times: { label: string; time: number }[]) {
-		if (!Manager.getInstance().devLog || times.length === 0) {
+	private recordTiming(
+		timings: PhaseTiming[],
+		label: string,
+		startedAt: number
+	) {
+		if (!Manager.getInstance().devLog) {
 			return;
 		}
-		const totalTime = Math.round(this.accTime(times.slice(1)));
+		timings.push({ label, duration: performance.now() - startedAt });
+	}
+
+	private logDeferredTiming(label: string, startedAt: number) {
+		if (!Manager.getInstance().devLog) {
+			return;
+		}
+		console.debug(
+			`Plugin Groups: ${label} in ${(
+				performance.now() - startedAt
+			).toFixed(2)} ms`
+		);
+	}
+
+	private displayTimeNotice(timings: PhaseTiming[], totalTime: number) {
+		if (timings.length === 0) {
+			return;
+		}
 
 		new Notice(
-			times
-				.map((item) => item.label + ': ' + item.time + ' ms')
+			timings
+				.map(
+					(item) => item.label + ': ' + item.duration.toFixed(2) + ' ms'
+				)
 				.join('\n') +
 				'\nTotal Time: ' +
-				totalTime +
+				totalTime.toFixed(0) +
 				' ms',
 			10000
 		);
 	}
 
-	private elapsedTime(times: { label: string; time: number }[]): number {
-		if (times.length > 1) {
-			return this.getCurrentTime() - this.accTime(times);
-		}
-		return this.getCurrentTime() - times[0].time;
+	async onunload() {
+		// Never lose a scheduled settings write when the plugin unloads.
+		await Manager.getInstance().flushPendingSaveSettings();
 	}
-
-	private accTime(times: { label: string; time: number }[]): number {
-		return times
-			.map((item) => item.time)
-			.reduce((prev, curr) => prev + curr);
-	}
-
-	private getCurrentTime(): number {
-		return Date.now();
-	}
-
-	onunload() {}
 }

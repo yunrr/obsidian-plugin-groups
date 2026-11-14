@@ -16,11 +16,26 @@ const DEFAULT_SETTINGS: PluginGroupsSettings = {
 };
 
 export default class Manager {
+	/**
+	 * Rapid interactions (toggling plugins, renaming, filtering) call
+	 * saveSettings many times in a row, and every call serializes the whole
+	 * settings object and writes data.json to disk. Writes that land while
+	 * another write is in flight are merged into a single follow-up write.
+	 */
+	private static readonly SAVE_DEBOUNCE_MS = 150;
+
 	private static instance?: Manager;
 
 	private settings: PluginGroupsSettings;
 
 	private main: PgMain;
+
+	private writeInFlight = false;
+	private pendingWrite?: Promise<void>;
+	private saveTimer?: number;
+	private pendingSave?: Promise<void>;
+	private resolvePendingSave?: () => void;
+	private rejectPendingSave?: (reason?: unknown) => void;
 
 	private constructor() {}
 
@@ -106,8 +121,8 @@ export default class Manager {
 		return groups;
 	}
 
-	async saveSettings() {
-		const persistentSettings: PersistentSettings = {
+	private createPersistentSettings(): PersistentSettings {
+		return {
 			groups: Array.from(this.groupsMap.values() ?? []),
 			generateCommands:
 				this.settings.generateCommands ??
@@ -124,7 +139,94 @@ export default class Manager {
 				this.settings.showStatusbarIcon ??
 				DEFAULT_SETTINGS.showStatusbarIcon,
 		};
-		await this.main.saveData(persistentSettings);
+	}
+
+	/**
+	 * Persists the current settings.
+	 *
+	 * When nothing else is being written, the write happens straight away so
+	 * single actions (closing the group editor, flipping a switch) stay as
+	 * responsive as before. Writes that arrive while another write is in
+	 * flight, or during the short window after it, are merged into one
+	 * follow-up write instead of each rewriting data.json.
+	 */
+	async saveSettings() {
+		if (!this.writeInFlight && !this.saveTimer) {
+			await this.writeSettings();
+			return;
+		}
+
+		return this.scheduleSave();
+	}
+
+	private scheduleSave(): Promise<void> {
+		if (!this.pendingSave) {
+			this.pendingSave = new Promise<void>((resolve, reject) => {
+				this.resolvePendingSave = resolve;
+				this.rejectPendingSave = reject;
+			});
+		}
+
+		if (this.saveTimer) {
+			window.clearTimeout(this.saveTimer);
+		}
+		this.saveTimer = window.setTimeout(
+			() => void this.flushPendingSaveSettings(),
+			Manager.SAVE_DEBOUNCE_MS
+		);
+
+		return this.pendingSave;
+	}
+
+	private async writeSettings(): Promise<void> {
+		this.writeInFlight = true;
+		const write = this.main.saveData(this.createPersistentSettings());
+		const settled = write
+			.then(
+				() => undefined,
+				() => undefined
+			)
+			.then(() => {
+				this.writeInFlight = false;
+				if (this.pendingWrite === settled) {
+					this.pendingWrite = undefined;
+				}
+			});
+		this.pendingWrite = settled;
+		await write;
+	}
+
+	/**
+	 * Writes any pending settings change immediately. Called on unload so a
+	 * scheduled write is never lost when the plugin or the app shuts down.
+	 */
+	async flushPendingSaveSettings(): Promise<void> {
+		if (this.saveTimer) {
+			window.clearTimeout(this.saveTimer);
+			this.saveTimer = undefined;
+		}
+
+		// Let a write that is already on its way finish first.
+		if (this.pendingWrite) {
+			await this.pendingWrite;
+		}
+
+		if (!this.pendingSave) {
+			return;
+		}
+
+		const resolve = this.resolvePendingSave;
+		const reject = this.rejectPendingSave;
+		this.pendingSave = undefined;
+		this.resolvePendingSave = undefined;
+		this.rejectPendingSave = undefined;
+
+		try {
+			await this.writeSettings();
+			resolve?.();
+		} catch (error) {
+			reject?.(error);
+		}
 	}
 
 	// Getters & Setters
@@ -190,11 +292,13 @@ export default class Manager {
 	}
 
 	private statusbarItem: HTMLElement;
+	private statusbarMenu?: GroupSettingsMenu;
 
 	public updateStatusbarItem() {
 		if (this.statusbarItem) {
 			this.statusbarItem.remove();
 		}
+		this.statusbarMenu = undefined;
 		if (this.showStatusbarIcon === 'None') {
 			return;
 		}
@@ -209,10 +313,16 @@ export default class Manager {
 			setIcon(this.statusbarItem, 'boxes');
 		}
 
-		const menu = new GroupSettingsMenu(this.statusbarItem, {});
-
+		// The menu renders a row (with buttons) for every group. Building it
+		// eagerly made every startup pay for a panel most users never open.
 		this.statusbarItem.onfocus = () => {
-			menu.updatePosition();
+			if (!this.statusbarMenu) {
+				this.statusbarMenu = new GroupSettingsMenu(
+					this.statusbarItem,
+					{}
+				);
+			}
+			this.statusbarMenu.updatePosition();
 		};
 	}
 }

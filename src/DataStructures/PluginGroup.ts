@@ -136,9 +136,10 @@ export class PluginGroup implements PluginGroupData {
 	}
 
 	getGroupListString(): string {
+		const pluginIdsInGroup = new Set(this.plugins.map((p) => p.id));
 		const existingPluginsInGroup =
 			PluginManager.getAllAvailablePlugins().filter((p) =>
-				this.plugins.map((p) => p.id).contains(p.id)
+				pluginIdsInGroup.has(p.id)
 			);
 		let messageString = '';
 		this.plugins && this.plugins.length > 0
