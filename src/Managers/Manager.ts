@@ -13,6 +13,8 @@ const DEFAULT_SETTINGS: PluginGroupsSettings = {
 	devices: [],
 	doLoadSynchronously: true,
 	showStatusbarIcon: 'None',
+	detachDeferredPluginsOnStartup: true,
+	detachedStartupPlugins: [],
 };
 
 export default class Manager {
@@ -138,6 +140,12 @@ export default class Manager {
 			showStatusbarIcon:
 				this.settings.showStatusbarIcon ??
 				DEFAULT_SETTINGS.showStatusbarIcon,
+			detachDeferredPluginsOnStartup:
+				this.settings.detachDeferredPluginsOnStartup ??
+				DEFAULT_SETTINGS.detachDeferredPluginsOnStartup,
+			detachedStartupPlugins:
+				this.settings.detachedStartupPlugins ??
+				DEFAULT_SETTINGS.detachedStartupPlugins,
 		};
 	}
 
@@ -289,6 +297,27 @@ export default class Manager {
 
 	get devices(): string[] {
 		return this.settings.devices;
+	}
+
+	/** Whether delayed plugins are kept out of Obsidian's startup list. */
+	get detachDeferredPluginsOnStartup(): boolean {
+		return this.settings.detachDeferredPluginsOnStartup;
+	}
+
+	set detachDeferredPluginsOnStartup(value: boolean) {
+		this.settings.detachDeferredPluginsOnStartup = value;
+	}
+
+	/**
+	 * Ids this plugin took out of Obsidian's startup list. Only these are ever
+	 * added back, so plugins the user disabled themselves stay untouched.
+	 */
+	get detachedStartupPlugins(): string[] {
+		return this.settings.detachedStartupPlugins;
+	}
+
+	set detachedStartupPlugins(value: string[]) {
+		this.settings.detachedStartupPlugins = value;
 	}
 
 	private statusbarItem: HTMLElement;

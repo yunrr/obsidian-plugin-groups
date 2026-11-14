@@ -4,6 +4,7 @@ import Manager from './src/Managers/Manager';
 import CommandManager from './src/Managers/CommandManager';
 import PluginManager from './src/Managers/PluginManager';
 import StartupScheduler from './src/Managers/StartupScheduler';
+import StartupPluginList from './src/Managers/StartupPluginList';
 
 interface PhaseTiming {
 	label: string;
@@ -64,6 +65,13 @@ export default class PgMain extends Plugin {
 			);
 		}
 		this.logDeferredTiming('Generated Commands for Groups', phaseStartedAt);
+
+		// Delayed plugins are only postponed if Obsidian doesn't load them
+		// itself first, so keep its startup list in line with the groups. This
+		// shapes the next start, not this one.
+		phaseStartedAt = performance.now();
+		StartupPluginList.getInstance().reconcile();
+		this.logDeferredTiming('Updated the startup plugin list', phaseStartedAt);
 
 		if (!loadedDuringStartup) {
 			// Loading the plugin mid-session shouldn't start enabling groups

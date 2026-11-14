@@ -16,6 +16,8 @@ export interface PluginGroupsSettings {
 	devLogs: boolean;
 	doLoadSynchronously: boolean;
 	showStatusbarIcon: 'None' | 'Icon' | 'Text';
+	detachDeferredPluginsOnStartup: boolean;
+	detachedStartupPlugins: string[];
 }
 
 export interface PersistentSettings {
@@ -26,4 +28,6 @@ export interface PersistentSettings {
 	devLogs: boolean;
 	doLoadSynchronously: boolean;
 	showStatusbarIcon: 'None' | 'Icon' | 'Text';
+	detachDeferredPluginsOnStartup: boolean;
+	detachedStartupPlugins: string[];
 }

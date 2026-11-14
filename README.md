@@ -77,8 +77,11 @@ You can enable or disable a group by clicking the "On" & "Off" buttons next to t
 
 To enable loading your plugins delayed you'll need to do the following:
 
-1. Manually disable the plugins you want to load through lazy load in the community plugins tab. Or, even better delete the id's of the plugins in the file: `.obsidian/community-plugins.json`.
-   Explanation: When the plugins are enabled in manually they are written in the file and therefore load on obsidian's startup (not through plugin groups).
+1. Nothing to do by hand: while a group is marked "Load on Startup" with a delay above zero, Plugin Groups takes its plugins out of Obsidian's own startup list (`.obsidian/community-plugins.json`) and puts them back once they are no longer delayed.
+   Explanation: Obsidian loads every plugin listed in that file before you can interact with the app, no matter what Plugin Groups does afterwards. A plugin that stays in the list is therefore loaded at startup anyway, and a delay only shifts that work instead of saving it. Only plugins that are removed from the list actually save startup time.
+    1. This applies from the next start, because Obsidian has already read the list by the time a plugin's `onload` runs.
+    2. While a delayed plugin is out of the list it shows as disabled in the community plugins list. Enabling it there works for the current session, but the next start takes it out again and its group loads it once the delay has passed.
+    3. Turn off "Keep delayed plugins out of the startup list" in the plugin settings to stop this. Do that before you disable or uninstall Plugin Groups, otherwise the delayed plugins stay out of the list and nothing loads them anymore.
 2. In the groups that contain the plugins you want to load delayed, toggle the "Load on Startup" button.
     1. Choose the desired behaviour (Enable or Disable).
     2. Set the delay for the plugins

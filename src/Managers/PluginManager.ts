@@ -171,7 +171,14 @@ export default class PluginManager {
 			// for some reason it won't recognize the admonition plugin as active if it was loaded through obsidian
 			Manager.getInstance().obsidianPluginsObject.enabledPlugins.has(
 				plugin.id
-			) || this.checkPluginEnabledFromPluginGroups(plugin)
+			) ||
+			this.checkPluginEnabledFromPluginGroups(plugin) ||
+			// Delayed plugins are taken out of Obsidian's startup list, so an
+			// entry there can be missing while the plugin is still loaded in
+			// this session. Check for the running instance as well, otherwise
+			// disabling its group would be a no-op.
+			Manager.getInstance().obsidianPluginsObject.getPlugin?.(plugin.id) !=
+				null
 		);
 	}
 

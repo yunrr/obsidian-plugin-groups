@@ -1,6 +1,7 @@
 import HtmlComponent from '../BaseComponents/HtmlComponent';
 import { Setting, TextComponent } from 'obsidian';
 import Manager from '../../Managers/Manager';
+import StartupPluginList from '../../Managers/StartupPluginList';
 import { makeCollapsible } from '../../Utils/Utilities';
 
 export interface AdvancedSettingOptions {
@@ -47,6 +48,22 @@ export default class AdvancedSettings extends HtmlComponent<AdvancedSettingOptio
 				await Manager.getInstance().saveSettings();
 			});
 		});
+
+		new Setting(content)
+			.setName('Keep delayed plugins out of the startup list')
+			.setDesc(
+				'Removes the plugins of delayed groups from Obsidian\'s own startup list, so they are only loaded once their delay has passed. Takes effect on the next start; disabling this puts them back right away.'
+			)
+			.addToggle((tgl) => {
+				tgl.setValue(
+					Manager.getInstance().detachDeferredPluginsOnStartup
+				);
+				tgl.onChange(async (value) => {
+					Manager.getInstance().detachDeferredPluginsOnStartup = value;
+					await Manager.getInstance().saveSettings();
+					StartupPluginList.getInstance().reconcile();
+				});
+			});
 	}
 
 	protected generateContainer(): void {
