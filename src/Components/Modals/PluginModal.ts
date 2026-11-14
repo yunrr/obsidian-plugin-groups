@@ -3,6 +3,7 @@ import { PgPlugin } from '../../DataStructures/PgPlugin';
 import Manager from '../../Managers/Manager';
 import TogglableList from '../BaseComponents/TogglableList';
 import { PluginGroup } from '../../DataStructures/PluginGroup';
+import { setModalTitle } from '../../Utils/Utilities';
 
 export default class PluginModal extends Modal {
 	private pluginToEdit: PgPlugin;
@@ -28,18 +29,20 @@ export default class PluginModal extends Modal {
 	}
 
 	onOpen() {
-		const { modalEl } = this;
+		const { contentEl } = this;
 
-		modalEl.empty();
+		setModalTitle(this, 'Plugin "' + this.pluginToEdit.name + '"');
 
-		const contentEl = modalEl.createDiv();
+		contentEl.empty();
 
-		const title = contentEl.createEl('h4');
-		title.textContent = 'Editing Plugin: ';
-		title.createEl('b').textContent = this.pluginToEdit.name;
+		if (Manager.getInstance().groupsMap.size === 0) {
+			contentEl.createEl('p', {
+				text: 'There are no groups yet. Create one in the plugin settings to assign this plugin.',
+			});
+		}
 
 		if (this.memberGroupIds) {
-			const groupsList = new TogglableList<PluginGroup>(contentEl, {
+			new TogglableList<PluginGroup>(contentEl, {
 				items: Array.from(Manager.getInstance().groupsMap.values()),
 				getToggleState: (item) => {
 					return this.getToggleState(item);
@@ -49,6 +52,7 @@ export default class PluginModal extends Modal {
 				},
 			});
 		}
+
 		this.generateFooter(contentEl);
 	}
 
@@ -75,9 +79,7 @@ export default class PluginModal extends Modal {
 	}
 
 	private generateFooter(parentElement: HTMLElement) {
-		const footer = parentElement.createEl('div');
-
-		footer.addClass('pg-edit-modal-footer');
+		const footer = parentElement.createDiv({ cls: 'modal-button-container' });
 
 		new Setting(footer)
 			.addButton((btn) => {
@@ -86,9 +88,9 @@ export default class PluginModal extends Modal {
 			})
 			.addButton((btn) => {
 				btn.setButtonText('Save');
+				btn.setCta();
 				btn.onClick(() => this.saveChanges());
-			})
-			.settingEl.addClass('modal-footer');
+			});
 	}
 
 	private async saveChanges() {

@@ -1,14 +1,14 @@
-import { makeCollapsible } from "src/Utils/Utilities";
-import HtmlComponent from "../BaseComponents/HtmlComponent";
-import { ExtraButtonComponent, Setting } from "obsidian";
-import EditPluginList from "../EditPluginList";
-import { PgPlugin } from "src/DataStructures/PgPlugin";
-import Manager from "src/Managers/Manager";
-import PluginManager from "src/Managers/PluginManager";
-import { ItemAndDescription } from "../DescriptionsList";
-import { PluginGroup } from "src/DataStructures/PluginGroup";
-import DropdownActionButton, { DropdownOption } from "../BaseComponents/DropdownActionButton";
-import FilteredGroupsList from "../FilteredGroupsList";
+import { makeCollapsible } from 'src/Utils/Utilities';
+import HtmlComponent from '../BaseComponents/HtmlComponent';
+import { Setting } from 'obsidian';
+import EditPluginList from '../EditPluginList';
+import { PgPlugin } from 'src/DataStructures/PgPlugin';
+import Manager from 'src/Managers/Manager';
+import PluginManager from 'src/Managers/PluginManager';
+import { ItemAndDescription } from '../DescriptionsList';
+import { PluginGroup } from 'src/DataStructures/PluginGroup';
+import DropdownActionButton, { DropdownOption } from '../BaseComponents/DropdownActionButton';
+import FilteredGroupsList from '../FilteredGroupsList';
 
 export interface PluginSettingOptions {
 	collapsible?: boolean;
@@ -19,8 +19,8 @@ export interface PluginSettingOptions {
 export default class PluginSettings extends HtmlComponent<PluginSettingOptions> {
 
 	private readonly FilterModes = {
-		notInGroup: 'Not in the Group(s)',
-		inGroup: 'In the Groups',
+		notInGroup: 'Not in the groups',
+		inGroup: 'In the groups',
 	};
 
 	activeFilterMode = this.FilterModes.inGroup;
@@ -53,12 +53,11 @@ export default class PluginSettings extends HtmlComponent<PluginSettingOptions> 
 			return;
 		}
 
-    const header = this.mainEl.createEl('h5', { text: 'Plugins' });
+    const header = this.mainEl.createEl('h4', { text: 'Plugins' });
 
 		this.content = this.mainEl.createDiv();
 
-		makeCollapsible(header, this.content);
-
+		// Registering the toggle twice flipped the chevron back on open.
 		if (this.options.collapsible) {
 			makeCollapsible(header, this.content, this.options.startOpened);
 		}
@@ -68,39 +67,27 @@ export default class PluginSettings extends HtmlComponent<PluginSettingOptions> 
 		this.GenerateFilterSection(this.content);
 
 		const listContainer = this.content.createDiv();
-		listContainer.style.overflow = 'scroll';
-		listContainer.style.maxHeight =
-			(this.options.maxListHeight?.toString() ?? '') + 'px';
 
+		if (this.options.maxListHeight) {
+			listContainer.style.setProperty(
+				'--pg-list-max-height',
+				this.options.maxListHeight + 'px'
+			);
+		}
 
 		this.GeneratePluginsList(listContainer);
 	}
 
   GeneratePluginsList(parentEl: HTMLElement) {
-
-		const refresh = new ExtraButtonComponent(this.content);
-		refresh.setIcon('refresh-cw');
-		refresh.setTooltip(
-			'Refresh list for changes to the plugins and assigned groups.'
-		);
-
 		this.pluginsList = new EditPluginList(
-			this.content,
+			parentEl,
 			{
 				items: this.filteredPlugins,
 			},
 			() => {
-				this.pluginsList.update({
-					items: this.filteredPlugins,
-				});
+				this.OnFilterOrSortUpdated();
 			}
 		);
-
-		refresh.onClick(() => {
-			this.pluginsList.update({
-				items: this.filteredPlugins,
-			});
-		});
 	}
 
 	private getPluginsWithGroupsAsDescription(): ItemAndDescription<PgPlugin>[] {
@@ -134,12 +121,22 @@ export default class PluginSettings extends HtmlComponent<PluginSettingOptions> 
 
   private GenerateFilterSection(parentEl: HTMLElement): HTMLElement {
 		const filterSection = parentEl.createDiv();
-		new Setting(filterSection).setName('Search').addText((txt) => {
-			txt.setPlaceholder('Search for Plugin...');
-			txt.onChange((search) => {
-				this.searchPlugins(search);
+		new Setting(filterSection)
+			.setName('Search')
+			.addText((txt) => {
+				txt.setPlaceholder('Plugin name');
+				txt.setValue(this.searchTerm ?? '');
+				txt.onChange((search) => {
+					this.searchPlugins(search);
+				});
+			})
+			// The refresh button used to be appended straight to the section,
+			// which left it floating without a row of its own.
+			.addExtraButton((btn) => {
+				btn.setIcon('refresh-cw')
+					.setTooltip('Reload the list of plugins and groups')
+					.onClick(() => this.OnFilterOrSortUpdated());
 			});
-		});
 
 		const filtersAndSelectionContainer = filterSection.createDiv({
 			cls: 'pg-plugin-filter-container',
@@ -168,6 +165,7 @@ export default class PluginSettings extends HtmlComponent<PluginSettingOptions> 
 		const groupFilterOptions: DropdownOption[] = [
 			{
 				label: 'All groups',
+				icon: 'layers',
 				func: () => {
 					if (
 						this.filteredGroups.size ===
@@ -195,13 +193,11 @@ export default class PluginSettings extends HtmlComponent<PluginSettingOptions> 
 
 		new DropdownActionButton(filters, {
 			mainLabel: {
-				label: 'Filter Groups',
+				label: 'Filter groups',
 			},
 			dropDownOptions: groupFilterOptions,
 			drpIcon: 'filter',
 		});
-
-		// TODO: Add Filter Mode Functionality: "Not In Selected Groups, In selected Groups"
 
 		const sortButton = new DropdownActionButton(filters, {
 			mainLabel: {

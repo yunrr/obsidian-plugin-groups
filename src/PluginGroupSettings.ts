@@ -2,6 +2,7 @@ import {
 	App,
 	ButtonComponent,
 	Notice,
+	Platform,
 	PluginSettingTab,
 	Setting,
 	TextComponent,
@@ -46,19 +47,12 @@ export default class PluginGroupSettings extends PluginSettingTab {
 	}
 
 	private generateGeneralSettings(containerEl: HTMLElement) {
-		const generalParent = containerEl.createDiv();
-
-		const header = generalParent.createEl('h4', {
-			text: 'General',
-			cls: 'mod-clickable',
-		});
-
-		const content = generalParent.createDiv();
-
-		makeCollapsible(header, content, true);
+		// A settings tab lists its general options at the top without a
+		// heading: the tab title already names the plugin.
+		const content = containerEl.createDiv();
 
 		new Setting(content)
-			.setName('Generate Commands for Groups')
+			.setName('Generate commands for groups')
 			.addToggle((tgl) => {
 				tgl.setValue(Manager.getInstance().generateCommands ?? false);
 				tgl.onChange(async (value) => {
@@ -68,7 +62,7 @@ export default class PluginGroupSettings extends PluginSettingTab {
 			});
 
 		new Setting(content)
-			.setName('Notice upon un-/loading groups')
+			.setName('Notice upon loading groups')
 			.addDropdown((drp) => {
 				drp.addOption('none', 'None')
 					.addOption('short', 'Short')
@@ -82,7 +76,16 @@ export default class PluginGroupSettings extends PluginSettingTab {
 				});
 			});
 
-		new Setting(content).setName('Statusbar Menu').addDropdown((drp) => {
+		const statusBarSetting = new Setting(content).setName(
+			'Status bar menu'
+		);
+
+		if (Platform.isMobile) {
+			// Status bar items do not exist on mobile, see the Obsidian docs.
+			statusBarSetting.setDesc('Not available on mobile.');
+		}
+
+		statusBarSetting.addDropdown((drp) => {
 			drp.addOption('None', 'None')
 				.addOption('Icon', 'Icon')
 				.addOption('Text', 'Text');
@@ -138,7 +141,7 @@ export default class PluginGroupSettings extends PluginSettingTab {
 
 		let deviceAddBtn: ButtonComponent;
 
-		const deviceNameSetting = new Setting(content).setName('New Device');
+		const deviceNameSetting = new Setting(content).setName('New device');
 
 		const newDevNameText = new TextComponent(deviceNameSetting.controlEl);
 		newDevNameText
@@ -151,7 +154,7 @@ export default class PluginGroupSettings extends PluginSettingTab {
 						: deviceAddBtn.buttonEl.addClass('btn-disabled');
 				}
 			})
-			.setPlaceholder('Device Name').inputEl.onkeydown = async (e) => {
+			.setPlaceholder('Device name').inputEl.onkeydown = async (e) => {
 			if (e.key === 'Enter') {
 				await CreateNewDevice();
 			}
@@ -187,7 +190,7 @@ export default class PluginGroupSettings extends PluginSettingTab {
 			} else {
 				deviceSetting
 					.addButton((btn) => {
-						btn.setButtonText('Set as Current');
+						btn.setButtonText('Set as current');
 						btn.onClick(() => {
 							setCurrentlyActiveDevice(device);
 							this.display();

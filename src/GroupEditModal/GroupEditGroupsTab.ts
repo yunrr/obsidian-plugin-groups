@@ -27,12 +27,10 @@ export default class GroupEditGroupsTab {
 	private generateGroupsSection(parentElement: HTMLElement): HTMLElement {
 		const groupSection: HTMLElement = parentElement.createDiv();
 
-		groupSection.createEl('h5', { text: 'Groups' });
-
 		const searchAndList: HTMLElement = groupSection.createEl('div');
 
 		new Setting(searchAndList).setName('Search').addText((txt) => {
-			txt.setPlaceholder('Search for Groups...');
+			txt.setPlaceholder('Group name');
 			txt.onChange((search) => {
 				this.searchGroups(search);
 			});
@@ -46,17 +44,14 @@ export default class GroupEditGroupsTab {
 		this.sortGroups(this.availableGroups).forEach((pluginGroup) => {
 			const setting = new Setting(groupList)
 				.setName(pluginGroup.name)
-				.addButton((btn) => {
-					btn.setIcon(
+				.addToggle((tgl) => {
+					tgl.setValue(
 						this.groupToEdit.groupIds.contains(pluginGroup.id)
-							? 'check-circle'
-							: 'circle'
-					).onClick(() => {
+					);
+					tgl.onChange(() => {
 						this.toggleGroupForGroup(pluginGroup);
-						btn.setIcon(
+						tgl.setValue(
 							this.groupToEdit.groupIds.contains(pluginGroup.id)
-								? 'check-circle'
-								: 'circle'
 						);
 					});
 				});

@@ -1,4 +1,5 @@
 import { App, Modal, Setting } from 'obsidian';
+import { setModalTitle } from '../../Utils/Utilities';
 
 export default class ConfirmationPopupModal extends Modal {
 	onConfirm: Event = new Event('onConfirm');
@@ -40,15 +41,22 @@ export default class ConfirmationPopupModal extends Modal {
 
 		contentEl.empty();
 
-		contentEl.createEl('h2', { text: this.headerText });
+		// The question belongs in the modal title: it stays visible while the
+		// buttons scroll into view on small screens.
+		setModalTitle(this, this.headerText);
 
-		new Setting(contentEl)
+		const footer = contentEl.createDiv({
+			cls: 'modal-button-container',
+		});
+
+		new Setting(footer)
 			.addButton((btn) => {
 				btn.setButtonText(this.cancelText);
 				btn.onClick(() => this.close());
 			})
 			.addButton((btn) => {
 				btn.setButtonText(this.confirmText);
+				btn.setWarning();
 				btn.onClick(() => {
 					this.eventTarget.dispatchEvent(this.onConfirm);
 					if (this.onConfirmListener) {

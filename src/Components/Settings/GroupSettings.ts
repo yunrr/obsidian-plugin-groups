@@ -26,7 +26,7 @@ export default class GroupSettings extends HtmlComponent<GroupSettingOptions> {
 			return;
 		}
 
-		const header = this.mainEl.createEl('h5', { text: 'Groups' });
+		const header = this.mainEl.createEl('h4', { text: 'Groups' });
 
 		const content = this.mainEl.createDiv();
 
@@ -34,22 +34,20 @@ export default class GroupSettings extends HtmlComponent<GroupSettingOptions> {
 			makeCollapsible(header, content, this.options.startOpened);
 		}
 
-		let addBtnEl: HTMLButtonElement;
+		let addBtn: { setDisabled(disabled: boolean): unknown };
 
 		new Setting(content)
-			.setName('Add Group')
+			.setName('Add group')
 			.addText((text) => {
 				this.groupNameField = text;
 				this.groupNameField
-					.setPlaceholder('Enter group name...')
+					.setPlaceholder('Group name')
 					.setValue(this.newGroupName)
 					.onChange((val) => {
 						this.newGroupName = val;
-						if (addBtnEl) {
-							val.replace(' ', '').length > 0
-								? addBtnEl.removeClass('btn-disabled')
-								: addBtnEl.addClass('btn-disabled');
-						}
+						addBtn?.setDisabled(
+							val.replace(' ', '').length === 0
+						);
 					}).inputEl.onkeydown = async (e) => {
 					if (e.key === 'Enter') {
 						await this.addNewGroup();
@@ -57,17 +55,33 @@ export default class GroupSettings extends HtmlComponent<GroupSettingOptions> {
 				};
 			})
 			.addButton((btn) => {
-				btn.setIcon('plus').onClick(() => this.addNewGroup());
-				addBtnEl = btn.buttonEl;
-				addBtnEl.addClass('btn-disabled');
+				btn.setIcon('plus')
+					.setTooltip('Create group')
+					.onClick(() => this.addNewGroup());
+				addBtn = btn;
+				btn.setDisabled(true);
 			});
 
-		const listContainer = content.createDiv();
-		listContainer.style.overflow = 'scroll';
-		listContainer.style.maxHeight =
-			(this.options.maxListHeight?.toString() ?? '') + 'px';
+		const listContainer = this.createListContainer(content);
 
 		this.GenerateGroupList(listContainer);
+	}
+
+	/**
+	 * A list of group rows. The height limit is handed to CSS instead of being
+	 * written as an inline `px` string, which used to end up as `undefinedpx`.
+	 */
+	private createListContainer(parentEl: HTMLElement): HTMLElement {
+		const listContainer = parentEl.createDiv();
+
+		if (this.options.maxListHeight) {
+			listContainer.style.setProperty(
+				'--pg-list-max-height',
+				this.options.maxListHeight + 'px'
+			);
+		}
+
+		return listContainer;
 	}
 
 	protected generateContainer(): void {
@@ -78,27 +92,25 @@ export default class GroupSettings extends HtmlComponent<GroupSettingOptions> {
 		Manager.getInstance().groupsMap.forEach((group) => {
 			const groupSetting = new Setting(groupParent)
 				.setName(group.name)
-				.addButton((btn) => {
-					btn.setButtonText('Enable');
-					btn.setIcon('power');
-					btn.onClick(async () => {
-						await group.enable();
-					});
-					group.groupActive()
-						? btn.buttonEl.removeClass('btn-disabled')
-						: btn.buttonEl.addClass('btn-disabled');
+				.setClass('pg-group-row')
+				.addExtraButton((btn) => {
+					btn.setIcon('power')
+						.setTooltip('Enable group')
+						.setDisabled(!group.groupActive())
+						.onClick(async () => {
+							await group.enable();
+						});
 				})
-				.addButton((btn) => {
-					btn.setButtonText('Disable');
-					btn.setIcon('power-off');
-					btn.onClick(() => group.disable());
-					group.groupActive()
-						? btn.buttonEl.removeClass('btn-disabled')
-						: btn.buttonEl.addClass('btn-disabled');
+				.addExtraButton((btn) => {
+					btn.setIcon('power-off')
+						.setTooltip('Disable group')
+						.setDisabled(!group.groupActive())
+						.onClick(() => group.disable());
 				})
-				.addButton((btn) => {
-					btn.setIcon('pencil');
-					btn.onClick(() => this.editGroup(group));
+				.addExtraButton((btn) => {
+					btn.setIcon('pencil')
+						.setTooltip('Edit group')
+						.onClick(() => this.editGroup(group));
 				});
 			if (group.loadAtStartup) {
 				const descFrag = new DocumentFragment();
@@ -107,7 +119,9 @@ export default class GroupSettings extends HtmlComponent<GroupSettingOptions> {
 					text: 'Startup: ',
 				});
 				startupEl.createEl('span', {
-					text: 'Delayed by ' + group.delay + ' seconds',
+					text: group.disableOnStartup
+						? 'Disabled after startup'
+						: 'Delayed by ' + group.delay + ' seconds',
 				});
 
 				if (!group.groupActive()) {
@@ -115,7 +129,7 @@ export default class GroupSettings extends HtmlComponent<GroupSettingOptions> {
 					activeEl.createEl('br');
 					activeEl.createEl('b', { text: 'Inactive: ' });
 					activeEl.createEl('span', {
-						text: 'Not enabled for current Device',
+						text: 'Not enabled for current device',
 					});
 				}
 

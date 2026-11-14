@@ -1,5 +1,5 @@
 import SettingsList from './SettingsList';
-import { ButtonComponent, Setting } from 'obsidian';
+import { Setting } from 'obsidian';
 import { Named } from '../../Utils/Types';
 
 export interface ToggleListOptions<ItemType extends Named> {
@@ -32,13 +32,17 @@ export default class TogglableList<ItemType extends Named>
 		return settingItem;
 	}
 
+	/**
+	 * A real toggle instead of a check/circle icon in a button: it is the
+	 * control Obsidian uses for this, it is reachable with a thumb, and the
+	 * row keeps its layout on phones.
+	 */
 	addToggleButton(setting: Setting, item: ItemType): void {
-		setting.addButton((btn) => {
-			const currentState = this.getItemState(item);
-			this.setToggleIcon(btn, currentState);
-			btn.onClick(() => {
+		setting.addToggle((tgl) => {
+			tgl.setValue(this.getItemState(item));
+			tgl.onChange(() => {
 				this.toggleItem(item);
-				this.setToggleIcon(btn, this.getItemState(item));
+				tgl.setValue(this.getItemState(item));
 			});
 		});
 	}
@@ -50,10 +54,6 @@ export default class TogglableList<ItemType extends Named>
 	getItemState(item: ItemType): boolean {
 		return this.options.getToggleState(item);
 	}
-
-	setToggleIcon(btn: ButtonComponent, value: boolean): void {
-		btn.setIcon(value ? 'check-circle' : 'circle');
-	}
 }
 
 export interface IToggleableList<ItemType> {
@@ -62,6 +62,4 @@ export interface IToggleableList<ItemType> {
 	addToggleButton(setting: Setting, item: ItemType): void;
 
 	getItemState(item: ItemType): boolean;
-
-	setToggleIcon(btn: ButtonComponent, value: boolean): void;
 }

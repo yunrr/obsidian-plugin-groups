@@ -1,5 +1,6 @@
 import { App, Modal, Setting } from 'obsidian';
 import Manager from '../Managers/Manager';
+import { setModalTitle } from '../Utils/Utilities';
 
 export default class DeviceSelectionModal extends Modal {
 	headerText: string;
@@ -24,7 +25,7 @@ export default class DeviceSelectionModal extends Modal {
 		selectedDevices?: string[]
 	) {
 		super(app);
-		this.headerText = 'New device detected please enter a unique name.';
+		this.headerText = 'Select devices';
 		this.cancelText = 'Cancel';
 		this.confirmText = 'Confirm';
 
@@ -47,33 +48,41 @@ export default class DeviceSelectionModal extends Modal {
 
 		contentEl.empty();
 
-		contentEl.createEl('h2', { text: this.headerText });
+		setModalTitle(this, this.headerText);
 
-		contentEl.createEl('h6', { text: 'Existing Devices' });
+		if (Manager.getInstance().devices.length === 0) {
+			contentEl.createEl('p', {
+				text: 'No devices yet. Add one under Settings → Plugin Groups → Devices first.',
+			});
+		} else {
+			contentEl.createEl('h4', { text: 'Devices' });
 
-		Manager.getInstance().devices.forEach((device) => {
-			new Setting(contentEl).setName(device).addButton((tgl) => {
-				tgl.setIcon(
-					this.selectedDevices.has(device) ? 'check-circle' : 'circle'
-				).onClick(() => {
-					if (this.selectedDevices.has(device)) {
-						this.selectedDevices.delete(device);
-						tgl.setIcon('circle');
-					} else {
-						this.selectedDevices.add(device);
-						tgl.setIcon('check-circle');
-					}
+			Manager.getInstance().devices.forEach((device) => {
+				new Setting(contentEl).setName(device).addToggle((tgl) => {
+					tgl.setValue(this.selectedDevices.has(device));
+					tgl.onChange((value) => {
+						if (value) {
+							this.selectedDevices.add(device);
+						} else {
+							this.selectedDevices.delete(device);
+						}
+					});
 				});
 			});
+		}
+
+		const footer = contentEl.createDiv({
+			cls: 'modal-button-container',
 		});
 
-		new Setting(contentEl)
+		new Setting(footer)
 			.addButton((btn) => {
 				btn.setButtonText(this.cancelText);
 				btn.onClick(() => this.close());
 			})
 			.addButton((btn) => {
 				btn.setButtonText(this.confirmText);
+				btn.setCta();
 				btn.onClick(() => {
 					this.onConfirm.detail.devices = Array.from(
 						this.selectedDevices.values()

@@ -1,213 +1,251 @@
+/*
+ * Plugin Groups
+ *
+ * Everything here leans on Obsidian's own CSS variables so the plugin follows
+ * the current theme on desktop and on mobile. Sizes use `--input-height` and
+ * friends, which the mobile apps raise for touch, and no affordance depends on
+ * hovering, because touch devices never hover.
+ */
+
+/* Lists of plugins / groups / devices -------------------------------- */
+
 .pg-settings-list {
-	overflow: scroll;
-	min-height: 1vh;
-	max-height: 40vh;
-	padding-top: 10px;
-	padding-bottom: 5px;
-}
-
-.add-group-btn {
-}
-
-.btn-disabled {
-	pointer-events: none;
-	opacity: 0.3;
-}
-
-.pg-edit-modal-footer {
-	position: sticky;
-	width: 100%;
-	left: 0;
-	bottom: -16px;
-	height: 30px;
 	display: flex;
-	justify-content: flex-end;
-	background: var(--modal-background, '#1e1e1');
-	align-items: center;
-	padding-top: 30px;
-	padding-bottom: 20px;
+	flex-direction: column;
+	max-height: var(--pg-list-max-height, 40vh);
+	overflow-y: auto;
+	overflow-x: hidden;
+	/* Keep the scrollbar from sitting on top of the rows on mobile. */
+	scrollbar-gutter: stable;
 }
+
+/* Group rows ---------------------------------------------------------- */
+
+.pg-group-row .setting-item-control {
+	flex-wrap: nowrap;
+}
+
+/* Tabs inside the group editor ---------------------------------------- */
 
 .pg-tabs {
 	display: flex;
 	flex: 0 1 auto;
-	overflow: auto;
-	margin: 6px -5px calc(var(--tab-outline-width) * -1);
-	padding: 1px 15px 0;
+	gap: var(--size-2-2);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	padding-bottom: var(--size-4-2);
+	border-bottom: var(--border-width) solid var(--background-modifier-border);
+}
+
+.pg-tabs::-webkit-scrollbar {
+	display: none;
 }
 
 .pg-tab {
-	background: var(--color-base-20);
-	align-items: center;
 	display: flex;
+	flex: 1 1 0;
+	align-items: center;
+	justify-content: center;
 	gap: var(--size-2-1);
-	height: 100%;
-	border-radius: 4px 4px 0 0;
-	overflow: hidden;
-	padding: 8px 8px;
-	width: 100%;
-}
-
-.pg-tab:before {
-	position: absolute;
-	bottom: 0;
-	content: '';
-	width: calc(var(--tab-curve) * 2);
-	height: calc(var(--tab-curve) * 2);
-	border-radius: 100%;
-	box-shadow: 0 0 0 calc(var(--tab-curve) * 3) transparent;
-}
-
-.pg-tab.is-active {
-	background: var(--tab-background-active, darkgray);
-	border-top: 1px solid var(--color-base-30, silver);
-	border-right: 1px solid var(--color-base-30, silver);
-	border-left: 1px solid var(--color-base-30, silver);
+	min-width: max-content;
+	min-height: var(--input-height, 30px);
+	padding: var(--size-2-2) var(--size-4-2);
+	border-radius: var(--radius-s);
+	background-color: var(--interactive-normal);
+	color: var(--text-muted);
+	cursor: var(--cursor);
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
 }
 
 .pg-tab:hover {
-	background: var(--interactive-hover, #363636);
+	background-color: var(--interactive-hover);
+	color: var(--text-normal);
+}
+
+.pg-tab.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.pg-tab:focus-visible {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+	outline: none;
 }
 
 .pg-tabbed-content {
 	display: none;
-	margin: 0 6px;
-	padding: 1em 0;
-	border-top: 1px solid var(--color-base-30, silver);
+	padding: var(--size-4-2) 0;
 }
 
 .pg-tabbed-content.is-active {
 	display: block;
 }
 
+/* The group editor keeps its tabs and its buttons in view --------------- */
+
+.pg-edit-modal .pg-tabs {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background-color: var(--modal-background);
+}
+
+.pg-edit-modal .modal-button-container {
+	position: sticky;
+	bottom: 0;
+	z-index: 2;
+	margin-top: var(--size-4-4);
+	padding-block: var(--size-4-2);
+	background-color: var(--modal-background);
+	border-top: var(--border-width) solid var(--background-modifier-border);
+}
+
+/* Filter row ---------------------------------------------------------- */
+
+.pg-plugin-filter-container {
+	margin-bottom: var(--size-4-2);
+	padding-bottom: var(--size-4-2);
+	border-bottom: var(--border-width) solid var(--background-modifier-border);
+}
+
 .pg-plugin-filter-section {
 	display: flex;
-	justify-content: space-between;
-}
-
-.pg-drp-btn {
-	position: relative;
-
-	padding: 1px 1px;
-	margin: 2px;
-}
-
-.pg-drp-btn span {
-	padding: 6px;
-	padding-bottom: 8px;
-}
-
-.pg-drp-btn-main-label {
-	width: 75%;
-}
-
-.pg-has-dropdown-single:focus .pg-dropdown {
-	opacity: 1;
-	display: flex;
-	pointer-events: auto;
-}
-
-.pg-has-dropdown:focus-within .pg-dropdown {
-	opacity: 1;
-	display: flex;
-	pointer-events: auto;
-}
-
-.pg-dropdown {
-	opacity: 0;
-	pointer-events: none;
-
-	position: absolute;
-
-	display: none;
+	flex-wrap: wrap;
 	align-items: center;
-	justify-content: center;
-	flex-direction: column;
-
-	z-index: 1;
-	top: 2em;
-	padding: 0;
-	width: 100%;
-	transition: opacity 0.15s ease-out;
-
-	list-style: none;
-
-	box-shadow: var(--input-shadow, rgba(211, 211, 211, 0.5));
-
-	color: var(--text-normal, white);
-	background-color: var(--interactive-normal, #363636);
-
-	border-radius: var(--button-radius, 5px);
-	border: 0;
+	gap: var(--size-4-2);
 }
 
-.pg-dropdown-item {
-	padding: 10px;
-	white-space: normal;
-	width: 100%;
-	height: 100%;
-}
-
-.pg-dropdown-item:hover {
-	box-shadow: rgba(17, 17, 26, 0.1) 0px 4px 16px,
-		rgba(17, 17, 26, 0.05) 0px 8px 32px;
-	background-color: var(--interactive-hover, #363636);
-	border-radius: var(--button-radius, 5px);
-}
-
-.pg-drp-btn .pg-drp-btn-divider {
-	padding: 0;
-	margin: 4px 1px;
-}
-
-.pg-chip {
-	background-color: var(--color-base-30, #363636);
-	border-radius: 16px;
-	font-size: 14px;
-	display: inline-flex;
-	align-items: center;
-}
-
-.pg-chip span {
-	margin-left: 12px;
-}
-
-.pg-chip .pg-chip-close-btn {
-	padding-top: 4px;
-	padding-right: 4px;
-	padding-left: 4px;
-	border-radius: 16px;
-	margin-left: 12px;
-}
-
-.pg-chip-close-btn:hover {
-	background: var(--color-base-50, rgb(255 255 255 / 20%));
+.pg-plugin-filter-section > div {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
 }
 
 .pg-group-filter-list {
 	display: flex;
-	gap: 8px;
-	margin-top: 8px;
-	min-height: 1.8rem;
 	align-items: center;
 	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	margin-top: var(--size-4-2);
+	min-height: 1.8rem;
 }
 
-.pg-plugin-filter-container {
-	border-bottom: 1px solid var(--color-base-30, silver);
-	margin-bottom: 1rem;
-	padding-bottom: 0.6rem;
+.pg-group-filter-list > span {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+/* Buttons that open a menu -------------------------------------------- */
+
+.pg-menu-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	height: var(--input-height, 30px);
+	padding: 0 var(--size-4-2);
+	border-radius: var(--input-radius, var(--radius-s));
+	border: var(--input-border-width, 1px) solid
+		var(--background-modifier-border);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	box-shadow: var(--input-shadow);
+	cursor: var(--cursor);
+	font-size: var(--font-ui-small);
+}
+
+.pg-menu-btn:hover {
+	background-color: var(--interactive-hover);
+}
+
+.pg-menu-btn-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pg-menu-btn-icon {
+	display: flex;
+	color: var(--text-muted);
+}
+
+/* Chips --------------------------------------------------------------- */
+
+.pg-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	min-height: 28px;
+	padding-inline-start: var(--size-4-2);
+	border-radius: var(--radius-l);
+	background-color: var(--background-modifier-border);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.pg-chip-close-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--icon-size, 18px);
+	height: var(--icon-size, 18px);
+	padding: var(--size-2-1);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	cursor: var(--cursor);
+}
+
+.pg-chip-close-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* Collapsible sections ------------------------------------------------ */
+
+h4.pg-collapsible-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	min-height: var(--input-height, 32px);
+	padding: 0 var(--size-4-4);
+	margin: 0 0 var(--size-2-2);
+	border-radius: var(--radius-s);
+	cursor: var(--cursor);
+	user-select: none;
+}
+
+h4.pg-collapsible-header:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.pg-collapsible-icon {
+	display: flex;
+	margin-inline-start: auto;
+	color: var(--text-muted);
+}
+
+.pg-collapsible-content {
+	display: none;
+}
+
+.pg-collapsible-content.is-active {
+	display: block;
+}
+
+/* Status bar menu (desktop only, the mobile apps have no status bar) ---- */
+
+.pg-statusbar-icon {
+	cursor: var(--cursor);
 }
 
 .pg-settings-window {
-	height: 0;
-	opacity: 0;
-
-	transition: height 1s, opacity 250ms;
-
-	overflow: scroll;
 	position: fixed;
+	height: 0;
+	overflow: auto;
+	opacity: 0;
 	background-color: var(--modal-background);
+	transition: height 1s, opacity 250ms;
 }
 
 .pg-statusbar-icon:focus-within > .pg-settings-window {
@@ -216,38 +254,26 @@
 	min-height: 100px;
 	min-width: 350px;
 	opacity: 1;
-
-	transition: height 1s, opacity 250ms;
-
+	padding: 0 0 0 var(--size-4-4);
 	border-radius: var(--modal-radius);
 	border: var(--modal-border-width) solid var(--modal-border-color);
-	padding: 0 0 0 16px;
+	transition: height 1s, opacity 250ms;
 }
 
-.pg-collapsible-content.is-active {
-	display: block;
+/* Touch --------------------------------------------------------------- */
+
+body.is-mobile .pg-chip,
+body.is-mobile .pg-tab {
+	min-height: 32px;
 }
 
-.pg-collapsible-content {
-	display: none;
+body.is-mobile .pg-chip-close-btn {
+	padding: var(--size-2-2);
 }
 
-.pg-collapsible-header:hover {
-	background-color: var(--interactive-hover, #363636);
-	border-radius: var(--button-radius, 5px);
-}
+/* Utility ------------------------------------------------------------- */
 
-.pg-collapsible-header {
-	padding-bottom: 8px;
-	padding-top: 4px;
-}
-
-.pg-collapsible-icon {
-	position: relative;
-	top: 4px;
-	left: 16px;
-}
-
-:root {
-	--pg-edit-modal-footer-height: 60px;
+.btn-disabled {
+	pointer-events: none;
+	opacity: 0.3;
 }

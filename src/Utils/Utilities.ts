@@ -1,7 +1,27 @@
 import { deviceNameKey } from './Constants';
 import { PluginGroup } from '../DataStructures/PluginGroup';
 import Manager from '../Managers/Manager';
-import { setIcon } from 'obsidian';
+import { Modal, setIcon } from 'obsidian';
+
+/**
+ * Sets a modal title.
+ *
+ * `Modal.setTitle()` only exists in newer API versions, so it is used when
+ * available and the title element is written to otherwise. Either way the
+ * title is part of the modal, which keeps the native close button intact.
+ */
+export function setModalTitle(modal: Modal, title: string) {
+	const withSetter = modal as unknown as {
+		setTitle?: (title: string) => unknown;
+	};
+
+	if (typeof withSetter.setTitle === 'function') {
+		withSetter.setTitle(title);
+		return;
+	}
+
+	modal.titleEl?.setText(title);
+}
 
 export function generateGroupID(
 	name: string,

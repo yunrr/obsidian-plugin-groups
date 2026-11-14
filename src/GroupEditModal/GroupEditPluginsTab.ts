@@ -23,8 +23,8 @@ export default class GroupEditPluginsTab extends HtmlComponent<PluginTabOptions>
 	private filteredPlugins: PgPlugin[];
 
 	private readonly sortModes = {
-		byName: 'By Name',
-		byNameAndSelected: 'By Name & Selected',
+		byName: 'By name',
+		byNameAndSelected: 'By name & selected',
 	};
 
 	private selectedSortMode = this.sortModes.byNameAndSelected;
@@ -47,8 +47,6 @@ export default class GroupEditPluginsTab extends HtmlComponent<PluginTabOptions>
 
 	protected generateContainer(): void {
 		this.mainEl = this.parentEl.createDiv();
-
-		this.mainEl.createEl('h5', { text: 'Plugins' });
 	}
 
 	protected generateContent(): void {
@@ -97,7 +95,7 @@ export default class GroupEditPluginsTab extends HtmlComponent<PluginTabOptions>
 	private createFilterSection(parentEl: HTMLElement): HTMLElement {
 		const filterSection = parentEl.createDiv();
 		new Setting(filterSection).setName('Search').addText((txt) => {
-			txt.setPlaceholder('Search for Plugin...');
+			txt.setPlaceholder('Plugin name');
 			txt.onChange((search) => {
 				this.searchPlugins(search);
 			});
@@ -157,7 +155,7 @@ export default class GroupEditPluginsTab extends HtmlComponent<PluginTabOptions>
 
 		new DropdownActionButton(filters, {
 			mainLabel: {
-				label: 'Filter Groups',
+				label: 'Filter groups',
 			},
 			dropDownOptions: groupFilterOptions,
 			drpIcon: 'filter',
@@ -193,7 +191,7 @@ export default class GroupEditPluginsTab extends HtmlComponent<PluginTabOptions>
 
 		new DropdownActionButton(filtersAndSelection, {
 			mainLabel: {
-				label: 'Bulk Select',
+				label: 'Bulk select',
 			},
 			dropDownOptions: [
 				{

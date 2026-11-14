@@ -1,10 +1,11 @@
-import { Notice, Plugin } from 'obsidian';
+import { Notice, Platform, Plugin } from 'obsidian';
 import PluginGroupSettings from './src/PluginGroupSettings';
 import Manager from './src/Managers/Manager';
 import CommandManager from './src/Managers/CommandManager';
 import PluginManager from './src/Managers/PluginManager';
 import StartupScheduler from './src/Managers/StartupScheduler';
 import StartupPluginList from './src/Managers/StartupPluginList';
+import { showGroupMenu } from './src/Utils/GroupMenu';
 
 interface PhaseTiming {
 	label: string;
@@ -43,6 +44,14 @@ export default class PgMain extends Plugin {
 		phaseStartedAt = performance.now();
 		manager.updateStatusbarItem();
 		this.recordTiming(timings, 'Creating the Statusbar item', phaseStartedAt);
+
+		if (Platform.isMobile) {
+			// Status bar items don't exist on mobile, so the group actions get
+			// a ribbon action instead.
+			this.addRibbonIcon('boxes', 'Plugin groups', (evt) =>
+				showGroupMenu(evt)
+			);
+		}
 
 		// Anything that isn't a registration is deferred until the workspace is
 		// ready. This follows Obsidian's "Optimize plugin load time" guide.

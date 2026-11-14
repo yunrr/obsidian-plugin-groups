@@ -2,7 +2,7 @@ import { PersistentSettings, PluginGroupsSettings } from '../Utils/Types';
 import PgMain from '../../main';
 import { PluginGroup } from '../DataStructures/PluginGroup';
 import { pluginId } from '../Utils/Constants';
-import { setIcon } from 'obsidian';
+import { Platform, setIcon } from 'obsidian';
 import GroupSettingsMenu from '../Components/Modals/GroupSettingsMenu';
 
 const DEFAULT_SETTINGS: PluginGroupsSettings = {
@@ -329,6 +329,12 @@ export default class Manager {
 		}
 		this.statusbarMenu = undefined;
 		if (this.showStatusbarIcon === 'None') {
+			return;
+		}
+
+		if (Platform.isMobile) {
+			// The mobile apps have no status bar at all. main.ts adds a ribbon
+			// action that offers the same group actions as a menu.
 			return;
 		}
 

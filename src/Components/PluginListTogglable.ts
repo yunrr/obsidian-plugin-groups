@@ -1,5 +1,5 @@
 import { PgPlugin } from '../DataStructures/PgPlugin';
-import { ButtonComponent, Setting } from 'obsidian';
+import { Setting } from 'obsidian';
 import { PluginGroup } from '../DataStructures/PluginGroup';
 
 export default class PluginListTogglable {
@@ -51,30 +51,30 @@ export default class PluginListTogglable {
 		this.plugins.forEach((plugin) => {
 			const setting = new Setting(this.pluginListEl).setName(plugin.name);
 			if (this.ownerGroup) {
-				const btn: ButtonComponent = new ButtonComponent(
-					setting.settingEl
-				);
-				this.setIconForPluginBtn(btn, plugin.id);
-				btn.onClick(() => {
-					this.pluginListTarget.dispatchEvent(
-						new CustomEvent('listToggleClicked', { detail: plugin })
-					);
-					this.setIconForPluginBtn(btn, plugin.id);
+				// The button used to be appended straight into the row, next to
+				// the control area. A toggle both lays out correctly and is
+				// usable with a thumb.
+				setting.addToggle((tgl) => {
+					tgl.setValue(this.isPluginInGroup(plugin.id));
+					tgl.onChange(() => {
+						this.pluginListTarget.dispatchEvent(
+							new CustomEvent('listToggleClicked', {
+								detail: plugin,
+							})
+						);
+						tgl.setValue(this.isPluginInGroup(plugin.id));
+					});
 				});
 			}
 		});
 	}
 
-	private setIconForPluginBtn(btn: ButtonComponent, pluginId: string) {
+	private isPluginInGroup(pluginId: string): boolean {
 		if (!this.ownerGroup) {
-			return;
+			return false;
 		}
 
-		btn.setIcon(
-			this.ownerGroup.plugins.map((p) => p.id).contains(pluginId)
-				? 'check-circle'
-				: 'circle'
-		);
+		return this.ownerGroup.plugins.map((p) => p.id).contains(pluginId);
 	}
 }
 

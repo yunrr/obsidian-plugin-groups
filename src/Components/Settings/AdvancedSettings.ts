@@ -23,8 +23,8 @@ export default class AdvancedSettings extends HtmlComponent<AdvancedSettingOptio
 			return;
 		}
 
-		const header = this.mainEl.createEl('h5', {
-			text: 'Advanced Settings',
+		const header = this.mainEl.createEl('h4', {
+			text: 'Advanced',
 		});
 
 		const content = this.mainEl.createDiv();
@@ -33,26 +33,36 @@ export default class AdvancedSettings extends HtmlComponent<AdvancedSettingOptio
 			makeCollapsible(header, content);
 		}
 
-		new Setting(content).setName('Development Logs').addToggle((tgl) => {
-			tgl.setValue(Manager.getInstance().devLog);
-			tgl.onChange(async (value) => {
-				Manager.getInstance().devLog = value;
-				await Manager.getInstance().saveSettings();
+		new Setting(content)
+			.setName('Development logs')
+			.setDesc(
+				'Writes startup timings and group activity to the developer console.'
+			)
+			.addToggle((tgl) => {
+				tgl.setValue(Manager.getInstance().devLog);
+				tgl.onChange(async (value) => {
+					Manager.getInstance().devLog = value;
+					await Manager.getInstance().saveSettings();
+				});
 			});
-		});
 
-		new Setting(content).setName('Load Synchronously').addToggle((tgl) => {
-			tgl.setValue(Manager.getInstance().doLoadSynchronously);
-			tgl.onChange(async (value) => {
-				Manager.getInstance().doLoadSynchronously = value;
-				await Manager.getInstance().saveSettings();
+		new Setting(content)
+			.setName('Load synchronously')
+			.setDesc(
+				"Enables a group's plugins all at once instead of one after the other."
+			)
+			.addToggle((tgl) => {
+				tgl.setValue(Manager.getInstance().doLoadSynchronously);
+				tgl.onChange(async (value) => {
+					Manager.getInstance().doLoadSynchronously = value;
+					await Manager.getInstance().saveSettings();
+				});
 			});
-		});
 
 		new Setting(content)
 			.setName('Keep delayed plugins out of the startup list')
 			.setDesc(
-				'Removes the plugins of delayed groups from Obsidian\'s own startup list, so they are only loaded once their delay has passed. Takes effect on the next start; disabling this puts them back right away.'
+				"Removes the plugins of delayed groups from Obsidian's startup list, so they only load once their delay has passed. Applies from the next start."
 			)
 			.addToggle((tgl) => {
 				tgl.setValue(

@@ -1,5 +1,5 @@
 import { App, Modal, Setting } from 'obsidian';
-import { generateGroupID } from '../../Utils/Utilities';
+import { generateGroupID, setModalTitle } from '../../Utils/Utilities';
 import ConfirmationPopupModal from '../BaseComponents/ConfirmationPopupModal';
 import { PluginGroup } from '../../DataStructures/PluginGroup';
 import GroupEditPluginsTab from '../../GroupEditModal/GroupEditPluginsTab';
@@ -26,27 +26,27 @@ export default class GroupEditModal extends Modal {
 	}
 
 	onOpen() {
-		const { modalEl } = this;
+		const { contentEl } = this;
 
-		modalEl.empty();
+		// Styling hook for the sticky tab bar and footer.
+		this.modalEl.addClass('pg-edit-modal');
 
-		const contentEl = modalEl.createDiv();
+		// The title and the close button belong to the modal itself. Wiping
+		// `modalEl` used to remove both, which left no way to close the dialog
+		// on phones, where the modal covers the whole screen.
+		this.updateTitle();
 
-		const nameSettingNameEl = new Setting(contentEl)
-			.addText((txt) => {
-				txt.setValue(this.groupToEdit.name);
-				txt.onChange((val) => {
-					this.groupToEdit.name = val;
-					nameSettingNameEl.setText(
-						'Editing "' + this.groupToEdit.name + '"'
-					);
-				});
-			})
-			.nameEl.createEl('h2', {
-				text: 'Editing "' + this.groupToEdit.name + '"',
+		contentEl.empty();
+
+		new Setting(contentEl).setName('Name').addText((txt) => {
+			txt.setValue(this.groupToEdit.name);
+			txt.onChange((val) => {
+				this.groupToEdit.name = val;
+				this.updateTitle();
 			});
+		});
 
-		const tabGroup: TabGroupComponent = new TabGroupComponent(modalEl, {
+		new TabGroupComponent(contentEl, {
 			tabs: [
 				{
 					title: 'General',
@@ -61,8 +61,8 @@ export default class GroupEditModal extends Modal {
 						new GroupEditPluginsTab(contentEl, {
 							group: this.groupToEdit,
 						}).mainEl ??
-						modalEl.createSpan(
-							'Plugins Not Loaded, please contact Dev.'
+						contentEl.createSpan(
+							'Plugins not loaded, please contact the developer.'
 						),
 				},
 				{
@@ -73,17 +73,20 @@ export default class GroupEditModal extends Modal {
 			],
 		});
 
-		this.generateFooter(modalEl);
+		this.generateFooter(contentEl);
+	}
+
+	private updateTitle() {
+		setModalTitle(this, 'Editing "' + this.groupToEdit.name + '"');
 	}
 
 	private generateFooter(parentElement: HTMLElement) {
-		const footer = parentElement.createEl('div');
-
-		footer.addClass('pg-edit-modal-footer');
+		const footer = parentElement.createDiv({ cls: 'modal-button-container' });
 
 		new Setting(footer)
 			.addButton((btn) => {
 				btn.setButtonText('Delete');
+				btn.setWarning();
 				btn.onClick(() =>
 					new ConfirmationPopupModal(
 						this.app,
@@ -98,20 +101,21 @@ export default class GroupEditModal extends Modal {
 				btn.setButtonText('Cancel');
 				btn.onClick(() => this.close());
 			})
-			.addButton((btn) => {
-				btn.setButtonText('Save');
-				btn.onClick(() => this.saveChanges());
-			})
 			.addExtraButton((btn) => {
 				btn.setIcon('copy')
 					.setTooltip('Duplicate this group')
 					.onClick(() => this.duplicate());
 			})
-			.settingEl.addClass('modal-footer');
+			.addButton((btn) => {
+				btn.setButtonText('Save');
+				btn.setCta();
+				btn.onClick(() => this.saveChanges());
+			});
 	}
 
 	onClose() {
 		const { contentEl } = this;
+
 		contentEl.empty();
 
 		if (
